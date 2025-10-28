@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PICNIC STAYS — Gujarat District Hotels (Demo)</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    :root{--accent:#0d6efd}
+    body{
+      font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      color:#111;
+      margin:0; padding:0;
+      min-height:100vh;
+      background:#f7f8fb;
+    }
+
+    /* Full-page slideshow background (fade) */
+    .slideshow{
+      position:fixed; inset:0; z-index:-2; overflow:hidden;
+    }
+    .slideshow img{
+      position:absolute; width:100%; height:100%; object-fit:cover; opacity:0;
+      animation:fade 30s infinite;
+    }
+    .slideshow img:nth-child(1){animation-delay:0s}
+    .slideshow img:nth-child(2){animation-delay:6s}
+    .slideshow img:nth-child(3){animation-delay:12s}
+    .slideshow img:nth-child(4){animation-delay:18s}
+    .slideshow img:nth-child(5){animation-delay:24s}
+    @keyframes fade{
+      0%{opacity:0} 8%{opacity:1} 24%{opacity:1} 32%{opacity:0} 100%{opacity:0}
+    }
+
+    /* translucent overlay to improve readability */
+    .overlay {
+      position:fixed; inset:0; background:rgba(255,255,255,0.55); z-index:-1;
+      backdrop-filter: blur(2px);
+    }
+
+    nav.navbar { background:rgba(255,255,255,0.9); backdrop-filter: blur(2px); }
+    .brand { font-weight:900; font-size:22px; color:#000; letter-spacing:0.6px; }
+
+    header.hero { margin-top:1rem; }
+    .mix-bg { background:rgba(255,255,255,0.85); border-radius:12px; padding:1.25rem; box-shadow:0 6px 18px rgba(20,20,20,0.06); }
+    .card-hover{transition:transform .18s ease, box-shadow .18s ease}
+    .card-hover:hover{transform:translateY(-6px);box-shadow:0 10px 30px rgba(13,110,253,.08)}
+    .chip{display:inline-block;padding:.25rem .6rem;border-radius:999px;background:rgba(13,110,253,.08);color:var(--accent);font-weight:600}
+    footer { background:rgba(255,255,255,0.9); }
+    .small-muted { color: rgba(0,0,0,0.55); }
+    .modal-backdrop.show { opacity:0.35; }
+    @media (max-width:576px){ .brand{font-size:18px} }
+  </style>
+</head>
+<body>
+
+  <!-- Background slideshow (5 images) -->
+  <div class="slideshow" aria-hidden="true">
+    <img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1600&auto=format&fit=crop">
+    <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=1600&auto=format&fit=crop">
+    <img src="https://images.unsplash.com/photo-1501117716987-c8e1ecb4a0b8?q=80&w=1600&auto=format&fit=crop">
+    <img src="https://images.unsplash.com/photo-1551888418-9cb63e23f7b1?q=80&w=1600&auto=format&fit=crop">
+    <img src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=1600&auto=format&fit=crop">
+  </div>
+  <div class="overlay"></div>
+
+  <nav class="navbar navbar-expand-lg navbar-light shadow-sm">
+    <div class="container">
+      <a class="navbar-brand brand" href="#">PICNIC STAYS</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="nav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item me-2"><button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addHotelModal"><i class="fa fa-plus me-1"></i> Add Hotel</button></li>
+          <li class="nav-item"><button class="btn btn-primary" id="resetDemoBtn">Reset Demo</button></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container my-4">
+    <header class="hero mix-bg">
+      <div class="row align-items-center">
+        <div class="col-lg-8">
+          <h1 class="fw-bold mb-1">Find hotels across Gujarat — district listings</h1>
+          <p class="small-muted mb-3">Search by district, min/max rate and AC. Demo data stored locally (localStorage).</p>
+
+          <form id="searchForm" class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label">District</label>
+              <select id="citySelect" class="form-select">
+                <option value="all">All Districts</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Min (₹)</label>
+              <input type="number" id="minRate" class="form-control" placeholder="0" min="0">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Max (₹)</label>
+              <input type="number" id="maxRate" class="form-control" placeholder="5000" min="0">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">AC?</label>
+              <select id="acSelect" class="form-select">
+                <option value="any">Any</option>
+                <option value="yes">AC</option>
+                <option value="no">Non-AC</option>
+              </select>
+            </div>
+            <div class="col-md-2 d-grid">
+              <button type="submit" class="btn btn-primary mt-2">Search</button>
+            </div>
+          </form>
+
+        </div>
+        <div class="col-lg-4 text-center d-none d-lg-block">
+          <img src="https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?q=80&w=1000&auto=format&fit=crop" class="img-fluid rounded-3 shadow-sm" style="max-height:180px; object-fit:cover">
+        </div>
+      </div>
+    </header>
+
+    <section class="my-3 d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Available Hotels <small id="resultsCount" class="text-muted ms-2">(0)</small></h5>
+      <input id="quickSearch" class="form-control" placeholder="Quick search by hotel name or description" style="max-width:340px">
+    </section>
+
+    <section id="results" class="row gy-3"></section>
+  </main>
+
+  <footer class="py-3 text-center">
+    <div class="small">Prepared By — <strong>Pushprajsinh Gohil & Het Patel</strong></div>
+  </footer>
+
+  <!-- Add Hotel Modal -->
+  <div class="modal fade" id="addHotelModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="addHotelForm" class="needs-validation" novalidate>
+          <div class="modal-header">
+            <h5 class="modal-title">Add a Hotel (Demo)</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label">Hotel Name</label><input required type="text" id="hotelName" class="form-control"></div>
+            <div class="mb-2"><label class="form-label">District</label><input required type="text" id="hotelCity" class="form-control" placeholder="e.g. Ahmedabad"></div>
+            <div class="row g-2">
+              <div class="col-6"><label class="form-label">Rate (₹)</label><input required type="number" id="hotelRate" class="form-control" min="0"></div>
+              <div class="col-6"><label class="form-label">AC</label><select id="hotelAc" class="form-select"><option value="yes">Yes</option><option value="no">No</option></select></div>
+            </div>
+            <div class="mt-2"><label class="form-label">Available Rooms</label><input required type="number" id="hotelRooms" class="form-control" min="0" value="5"></div>
+            <div class="mt-2"><label class="form-label">Short description</label><input type="text" id="hotelDesc" class="form-control" placeholder="e.g. Near railway station"></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button><button type="submit" class="btn btn-primary">Add Hotel</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Modal -->
+  <div class="modal fade" id="bookModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Booking</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body" id="bookDetails"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmBookingBtn">Confirm Booking</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
+    <div id="liveToast" class="toast align-items-center text-bg-dark" role="status">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody">Demo</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+  // ---------- DATA: Gujarat district-headquarter cities + 3 demo hotels each ----------
+  // Source for district list used: Gujarat official district portal / Wikipedia. :contentReference[oaicite:1]{index=1}
+  const SAMPLE_HOTELS = [
+    /* Ahmedabad */
+    {id:1,name:'Ahmedabad Comfort Inn',city:'Ahmedabad',rate:2800,ac:'yes',rooms:8,desc:'Comfortable stay near city center'},
+    {id:2,name:'Sabarmati Residency',city:'Ahmedabad',rate:3300,ac:'yes',rooms:5,desc:'Close to Sabarmati River'},
+    {id:3,name:'Budget Stay Ahmedabad',city:'Ahmedabad',rate:1200,ac:'no',rooms:10,desc:'Affordable & clean'},
+    /* Amreli */
+    {id:4,name:'Amreli Grand',city:'Amreli',rate:1500,ac:'no',rooms:6,desc:'Cozy rooms'},
+    {id:5,name:'Saurashtra Inn',city:'Amreli',rate:2100,ac:'yes',rooms:4,desc:'Local cuisine available'},
+    {id:6,name:'River View Amreli',city:'Amreli',rate:1800,ac:'no',rooms:5,desc:'Quiet location'},
+    /* Anand */
+    {id:7,name:'Anand Comfort Suites',city:'Anand',rate:2400,ac:'yes',rooms:6,desc:'Business-friendly'},
+    {id:8,name:'Milk City Lodge',city:'Anand',rate:1600,ac:'no',rooms:8,desc:'Near main market'},
+    {id:9,name:'Anand Budget Rooms',city:'Anand',rate:1100,ac:'no',rooms:12,desc:'Simple & neat'},
+    /* Aravalli (Modasa) */
+    {id:10,name:'Modasa Heritage',city:'Aravalli',rate:1700,ac:'no',rooms:7,desc:'Friendly staff'},
+    {id:11,name:'Aravalli Retreat',city:'Aravalli',rate:2300,ac:'yes',rooms:3,desc:'Scenic surroundings'},
+    {id:12,name:'Hillside Lodge',city:'Aravalli',rate:1400,ac:'no',rooms:6,desc:''},
+    /* Banaskantha (Palanpur) */
+    {id:13,name:'Palanpur Residency',city:'Banaskantha',rate:1500,ac:'no',rooms:9,desc:'Central location'},
+    {id:14,name:'Banaskantha Comfort',city:'Banaskantha',rate:2000,ac:'yes',rooms:4,desc:''},
+    {id:15,name:'Rural Hues Hotel',city:'Banaskantha',rate:1250,ac:'no',rooms:10,desc:'Local hospitality'},
+    /* Bharuch */
+    {id:16,name:'Bharuch Grand',city:'Bharuch',rate:1900,ac:'yes',rooms:5,desc:'Near riverfront'},
+    {id:17,name:'Gujarat Guest House',city:'Bharuch',rate:1300,ac:'no',rooms:8,desc:''},
+    {id:18,name:'Bharuch Inn',city:'Bharuch',rate:1600,ac:'yes',rooms:6,desc:''},
+    /* Bhavnagar */
+    {id:19,name:'Bhavnagar Palace',city:'Bhavnagar',rate:2200,ac:'yes',rooms:4,desc:'Nice sea breeze'},
+    {id:20,name:'Bhavnagar Comfort',city:'Bhavnagar',rate:1400,ac:'no',rooms:10,desc:''},
+    {id:21,name:'Seaside Lodge',city:'Bhavnagar',rate:2000,ac:'yes',rooms:3,desc:''},
+    /* Botad */
+    {id:22,name:'Botad Residency',city:'Botad',rate:1200,ac:'no',rooms:8,desc:''},
+    {id:23,name:'Botad Comfort Inn',city:'Botad',rate:1500,ac:'yes',rooms:5,desc:''},
+    {id:24,name:'Saurashtra Rooms',city:'Botad',rate:1000,ac:'no',rooms:12,desc:''},
+    /* Chhota Udaipur */
+    {id:25,name:'Tribal Heritage Hotel',city:'Chhota Udaipur',rate:1300,ac:'no',rooms:7,desc:''},
+    {id:26,name:'Chhota Udaipur Lodge',city:'Chhota Udaipur',rate:1700,ac:'yes',rooms:4,desc:''},
+    {id:27,name:'Forest View Inn',city:'Chhota Udaipur',rate:1100,ac:'no',rooms:9,desc:''},
+    /* Dahod */
+    {id:28,name:'Dahod Comfort',city:'Dahod',rate:1250,ac:'no',rooms:8,desc:''},
+    {id:29,name:'Dahod Regency',city:'Dahod',rate:1800,ac:'yes',rooms:4,desc:''},
+    {id:30,name:'Gujarat Lodge Dahod',city:'Dahod',rate:1000,ac:'no',rooms:10,desc:''},
+    /* Dang (Ahwa) */
+    {id:31,name:'Dang Nature Resort',city:'Dang',rate:1600,ac:'no',rooms:6,desc:'Near forests'},
+    {id:32,name:'Ahwa Guest House',city:'Dang',rate:1400,ac:'no',rooms:7,desc:''},
+    {id:33,name:'Tranquil Dang Inn',city:'Dang',rate:1900,ac:'yes',rooms:3,desc:''},
+    /* Devbhoomi Dwarka */
+    {id:34,name:'Dwarka Sea View',city:'Devbhoomi Dwarka',rate:2500,ac:'yes',rooms:5,desc:'Near temple'},
+    {id:35,name:'Pilgrim Stay',city:'Devbhoomi Dwarka',rate:1200,ac:'no',rooms:10,desc:''},
+    {id:36,name:'Dwarka Comfort Inn',city:'Devbhoomi Dwarka',rate:1800,ac:'yes',rooms:4,desc:''},
+    /* Gir Somnath */
+    {id:37,name:'Somnath Seaside',city:'Gir Somnath',rate:2400,ac:'yes',rooms:4,desc:'Near Somnath Temple'},
+    {id:38,name:'Gir Guest House',city:'Gir Somnath',rate:1500,ac:'no',rooms:9,desc:''},
+    {id:39,name:'Coastal Retreat',city:'Gir Somnath',rate:2000,ac:'yes',rooms:3,desc:''},
+    /* Jamnagar */
+    {id:40,name:'Jamnagar Regency',city:'Jamnagar',rate:2100,ac:'yes',rooms:6,desc:''},
+    {id:41,name:'Jamnagar Budget Inn',city:'Jamnagar',rate:1100,ac:'no',rooms:12,desc:''},
+    {id:42,name:'Marine View Jamnagar',city:'Jamnagar',rate:2300,ac:'yes',rooms:4,desc:''},
+    /* Junagadh */
+    {id:43,name:'Junagadh Palace',city:'Junagadh',rate:2000,ac:'yes',rooms:5,desc:''},
+    {id:44,name:'Gir View Lodge',city:'Junagadh',rate:1500,ac:'no',rooms:8,desc:''},
+    {id:45,name:'Junagadh Comfort',city:'Junagadh',rate:1200,ac:'no',rooms:10,desc:''},
+    /* Kachchh (Bhuj) */
+    {id:46,name:'Bhuj Sands Hotel',city:'Kachchh',rate:2200,ac:'yes',rooms:5,desc:'Close to Rann'},
+    {id:47,name:'Kutch Guest House',city:'Kachchh',rate:1400,ac:'no',rooms:9,desc:''},
+    {id:48,name:'Rann View Lodge',city:'Kachchh',rate:2600,ac:'yes',rooms:3,desc:''},
+    /* Kheda (Nadiad) */
+    {id:49,name:'Nadiad Comfort Inn',city:'Kheda',rate:1600,ac:'no',rooms:8,desc:''},
+    {id:50,name:'Kheda Residency',city:'Kheda',rate:2100,ac:'yes',rooms:4,desc:''},
+    {id:51,name:'Nadiad Budget Rooms',city:'Kheda',rate:1100,ac:'no',rooms:10,desc:''},
+    /* Mahisagar */
+    {id:52,name:'Mahisagar Retreat',city:'Mahisagar',rate:1400,ac:'no',rooms:9,desc:''},
+    {id:53,name:'Riverbank Mahisagar',city:'Mahisagar',rate:1700,ac:'yes',rooms:4,desc:''},
+    {id:54,name:'Mahisagar Lodge',city:'Mahisagar',rate:1200,ac:'no',rooms:7,desc:''},
+    /* Mehsana */
+    {id:55,name:'Mehsana Comfort',city:'Mehsana',rate:1500,ac:'no',rooms:9,desc:''},
+    {id:56,name:'Mehsana Residency',city:'Mehsana',rate:2000,ac:'yes',rooms:5,desc:''},
+    {id:57,name:'Industrial Inn',city:'Mehsana',rate:1300,ac:'no',rooms:10,desc:''},
+    /* Morbi */
+    {id:58,name:'Morbi Riverside',city:'Morbi',rate:1700,ac:'no',rooms:8,desc:''},
+    {id:59,name:'Morbi Comfort Inn',city:'Morbi',rate:2200,ac:'yes',rooms:4,desc:''},
+    {id:60,name:'Ceramic City Lodge',city:'Morbi',rate:1400,ac:'no',rooms:7,desc:''},
+    /* Narmada (Rajpipla) */
+    {id:61,name:'Rajpipla Resorts',city:'Narmada',rate:2000,ac:'yes',rooms:4,desc:''},
+    {id:62,name:'Narmada Guest House',city:'Narmada',rate:1300,ac:'no',rooms:8,desc:''},
+    {id:63,name:'Riverfront Narmada',city:'Narmada',rate:1600,ac:'yes',rooms:5,desc:''},
+    /* Navsari */
+    {id:64,name:'Navsari Comfort',city:'Navsari',rate:1500,ac:'no',rooms:9,desc:''},
+    {id:65,name:'Navsari Residency',city:'Navsari',rate:1900,ac:'yes',rooms:5,desc:''},
+    {id:66,name:'Gujarat Stay Navsari',city:'Navsari',rate:1200,ac:'no',rooms:10,desc:''},
+    /* Panchmahal (Godhra) */
+    {id:67,name:'Godhra Guest Inn',city:'Panchmahal',rate:1400,ac:'no',rooms:9,desc:''},
+    {id:68,name:'Panchmahal Comfort',city:'Panchmahal',rate:1800,ac:'yes',rooms:4,desc:''},
+    {id:69,name:'Godhra Lodge',city:'Panchmahal',rate:1100,ac:'no',rooms:12,desc:''},
+    /* Patan */
+    {id:70,name:'Patan Heritage Hotel',city:'Patan',rate:2000,ac:'yes',rooms:4,desc:'Near historical sites'},
+    {id:71,name:'Patan Comfort',city:'Patan',rate:1400,ac:'no',rooms:8,desc:''},
+    {id:72,name:'Patan Budget Inn',city:'Patan',rate:1000,ac:'no',rooms:12,desc:''},
+    /* Porbandar */
+    {id:73,name:'Porbandar Sea View',city:'Porbandar',rate:2200,ac:'yes',rooms:4,desc:''},
+    {id:74,name:'Gandhi Bhavan Lodge',city:'Porbandar',rate:1500,ac:'no',rooms:9,desc:''},
+    {id:75,name:'Coastal Porbandar Inn',city:'Porbandar',rate:1800,ac:'yes',rooms:5,desc:''},
+    /* Rajkot */
+    {id:76,name:'Rajkot Grand',city:'Rajkot',rate:2300,ac:'yes',rooms:5,desc:''},
+    {id:77,name:'Rajkot Budget Inn',city:'Rajkot',rate:1200,ac:'no',rooms:10,desc:''},
+    {id:78,name:'Saurashtra Comfort',city:'Rajkot',rate:1600,ac:'yes',rooms:6,desc:''},
+    /* Sabarkantha (Himmatnagar) */
+    {id:79,name:'Himmatnagar Lodge',city:'Sabarkantha',rate:1400,ac:'no',rooms:9,desc:''},
+    {id:80,name:'Sabarkantha Inn',city:'Sabarkantha',rate:1900,ac:'yes',rooms:4,desc:''},
+    {id:81,name:'Hillside Stay',city:'Sabarkantha',rate:1200,ac:'no',rooms:10,desc:''},
+    /* Surat */
+    {id:82,name:'Surat Business Inn',city:'Surat',rate:2800,ac:'yes',rooms:6,desc:'Close to textile markets'},
+    {id:83,name:'Surat Budget Rooms',city:'Surat',rate:1200,ac:'no',rooms:15,desc:''},
+    {id:84,name:'Diamond City Suites',city:'Surat',rate:3500,ac:'yes',rooms:3,desc:''},
+    /* Surendranagar */
+    {id:85,name:'Surendranagar Residency',city:'Surendranagar',rate:1300,ac:'no',rooms:10,desc:''},
+    {id:86,name:'Surendranagar Comfort',city:'Surendranagar',rate:1700,ac:'yes',rooms:5,desc:''},
+    {id:87,name:'Central Inn',city:'Surendranagar',rate:1100,ac:'no',rooms:12,desc:''},
+    /* Tapi (Vyara) */
+    {id:88,name:'Vyara Riverside',city:'Tapi',rate:1600,ac:'no',rooms:8,desc:''},
+    {id:89,name:'Tapi Comfort Inn',city:'Tapi',rate:2000,ac:'yes',rooms:4,desc:''},
+    {id:90,name:'Forest View Tapi',city:'Tapi',rate:1400,ac:'no',rooms:7,desc:''},
+    /* Vadodara */
+    {id:91,name:'Vadodara Grand',city:'Vadodara',rate:2600,ac:'yes',rooms:6,desc:''},
+    {id:92,name:'Vadodara Budget Inn',city:'Vadodara',rate:1300,ac:'no',rooms:12,desc:''},
+    {id:93,name:'Sayaji View Rooms',city:'Vadodara',rate:2200,ac:'yes',rooms:4,desc:''},
+    /* Valsad */
+    {id:94,name:'Valsad Beach Resort',city:'Valsad',rate:2000,ac:'yes',rooms:5,desc:''},
+    {id:95,name:'Valsad Comfort',city:'Valsad',rate:1400,ac:'no',rooms:9,desc:''},
+    {id:96,name:'Coastal Valsad Inn',city:'Valsad',rate:1700,ac:'yes',rooms:4,desc:''}
+  ];
+
+  // ---------- App logic (search, render, booking, localStorage) ----------
+  const $ = s => document.querySelector(s);
+  let hotels = [];
+  let bookings = [];
+
+  function saveState(){
+    localStorage.setItem('picnic_hotels', JSON.stringify(hotels));
+    localStorage.setItem('picnic_bookings', JSON.stringify(bookings));
+  }
+  function loadState(){
+    hotels = JSON.parse(localStorage.getItem('picnic_hotels')) || SAMPLE_HOTELS.slice();
+    bookings = JSON.parse(localStorage.getItem('picnic_bookings')) || [];
+  }
+
+  function populateCityOptions(){
+    const cities = Array.from(new Set(hotels.map(h=>h.city))).sort((a,b)=> a.localeCompare(b));
+    const select = $('#citySelect');
+    select.innerHTML = '<option value="all">All Districts</option>' + cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+  }
+
+  function renderResults(list){
+    const container = $('#results');
+    container.innerHTML = '';
+    if(!list.length){
+      container.innerHTML = `<div class="col-12"><div class="alert alert-info">No hotels found for selected filters.</div></div>`;
+      $('#resultsCount').textContent = '(0)';
+      return;
+    }
+    $('#resultsCount').textContent = `(${list.length})`;
+    list.forEach(h=>{
+      const col = document.createElement('div'); col.className = 'col-md-6 col-lg-4';
+      col.innerHTML = `
+        <div class="card card-hover h-100">
+          <div class="card-body d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="card-title mb-0">${h.name}</h5>
+              <span class="chip">₹${h.rate}</span>
+            </div>
+            <p class="text-muted small mb-1">${h.city} • ${h.ac === 'yes' ? 'AC' : 'Non-AC'}</p>
+            <p class="flex-grow-1">${h.desc || ''}</p>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+              <div class="small text-muted">Rooms: ${h.rooms}</div>
+              <div>
+                <button class="btn btn-sm btn-outline-primary me-2" onclick="viewDetails(${h.id})">Details</button>
+                <button class="btn btn-sm btn-primary" onclick="startBooking(${h.id})" ${h.rooms<=0? 'disabled': ''}>Book</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      container.appendChild(col);
+    });
+  }
+
+  function getFilters(){
+    const city = $('#citySelect').value;
+    const min = Number($('#minRate').value || 0);
+    const maxRaw = $('#maxRate').value;
+    const max = maxRaw === '' ? Infinity : Number(maxRaw);
+    const ac = $('#acSelect').value;
+    return {city,min,max,ac};
+  }
+
+  function applyFilters(){
+    const {city,min,max,ac} = getFilters();
+    let result = hotels.filter(h => h.rate >= min && h.rate <= max);
+    if(city !== 'all') result = result.filter(h=>h.city.toLowerCase() === city.toLowerCase());
+    if(ac !== 'any') result = result.filter(h=>h.ac === ac);
+    const q = $('#quickSearch').value.trim().toLowerCase();
+    if(q) result = result.filter(h=>h.name.toLowerCase().includes(q) || (h.desc||'').toLowerCase().includes(q));
+    renderResults(result);
+  }
+
+  function debounce(fn, wait=250){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
+
+  function viewDetails(id){
+    const h = hotels.find(x=>x.id===id);
+    if(!h) return showToast('Hotel not found');
+    const details = document.getElementById('bookDetails');
+    details.innerHTML = `
+      <h5>${h.name}</h5>
+      <p class="small text-muted">${h.city} • ${h.ac === 'yes' ? 'AC' : 'Non-AC'}</p>
+      <p>${h.desc || 'No description.'}</p>
+      <ul class="list-unstyled small">
+        <li><strong>Rate:</strong> ₹${h.rate}</li>
+        <li><strong>Available rooms:</strong> ${h.rooms}</li>
+      </ul>
+    `;
+    const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+    bookModal.show();
+    document.getElementById('confirmBookingBtn').onclick = ()=>confirmBooking(h.id, 1);
+  }
+
+  function startBooking(id){
+    const h = hotels.find(x=>x.id===id);
+    if(!h) return showToast('Hotel not found');
+    const details = document.getElementById('bookDetails');
+    details.innerHTML = `
+      <h5>Book: ${h.name}</h5>
+      <p class="small text-muted">${h.city} • ${h.ac === 'yes' ? 'AC' : 'Non-AC'}</p>
+      <div class="mb-2">
+        <label class="form-label">Rooms to book</label>
+        <input type="number" id="roomsToBook" class="form-control" min="1" max="${h.rooms}" value="1">
+      </div>
+      <div class="small text-muted">Rate per room: ₹${h.rate}</div>
+      <div class="mt-2"><strong>Total: ₹<span id="bookingTotal">${h.rate}</span></strong></div>
+    `;
+    const bookModal = new bootstrap.Modal(document.getElementById('bookModal'));
+    bookModal.show();
+    const roomsInput = document.getElementById('roomsToBook');
+    roomsInput.oninput = ()=>{ const cnt = Number(roomsInput.value||1); document.getElementById('bookingTotal').textContent = h.rate * cnt; }
+    document.getElementById('confirmBookingBtn').onclick = ()=>{ const cnt = Number(document.getElementById('roomsToBook').value||1); if(cnt<=0 || cnt>h.rooms) return showToast('Invalid room count'); confirmBooking(h.id, cnt); };
+  }
+
+  function confirmBooking(id, count){
+    const hotel = hotels.find(h=>h.id===id);
+    if(!hotel) return showToast('Hotel not found');
+    if(hotel.rooms < count) return showToast('Not enough rooms available');
+    hotel.rooms -= count;
+    bookings.push({bookingId:Date.now(),hotelId:id,name:hotel.name,city:hotel.city,rate:hotel.rate,count,ts:new Date().toISOString()});
+    saveState();
+    applyFilters();
+    showToast(`Booked ${count} room(s) at ${hotel.name} for ₹${hotel.rate * count}`);
+    const modalEl = document.getElementById('bookModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+  }
+
+  function showToast(msg){ $('#toastBody').textContent = msg; const toast = new bootstrap.Toast(document.getElementById('liveToast')); toast.show(); }
+
+  // Add hotel form
+  document.getElementById('addHotelForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const name = $('#hotelName').value.trim();
+    const city = $('#hotelCity').value.trim();
+    const rate = Number($('#hotelRate').value);
+    const ac = $('#hotelAc').value;
+    const rooms = Number($('#hotelRooms').value);
+    const desc = $('#hotelDesc').value.trim();
+    if(!name||!city||isNaN(rate)) return showToast('Please fill required fields');
+    const newHotel = {id: Date.now(), name, city, rate, ac, rooms, desc};
+    hotels.push(newHotel);
+    saveState();
+    populateCityOptions();
+    applyFilters();
+    showToast('Hotel added locally');
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addHotelModal'));
+    modal.hide();
+    e.target.reset();
+  });
+
+  // Quick actions
+  document.getElementById('searchForm').addEventListener('submit', e=>{ e.preventDefault(); applyFilters(); });
+  document.getElementById('quickSearch').addEventListener('input', debounce(()=>applyFilters(),200));
+  document.getElementById('citySelect').addEventListener('change', applyFilters);
+  document.getElementById('acSelect').addEventListener('change', applyFilters);
+
+  // Reset demo
+  document.getElementById('resetDemoBtn').addEventListener('click', ()=>{
+    if(confirm('Reset demo data? This will clear local changes.')){
+      localStorage.removeItem('picnic_hotels');
+      localStorage.removeItem('picnic_bookings');
+      loadState();
+      populateCityOptions();
+      applyFilters();
+      showToast('Demo reset');
+    }
+  });
+
+  // init
+  function init(){
+    loadState();
+    populateCityOptions();
+    applyFilters();
+  }
+  init();
+
+  </script>
+
+</body>
+</html>
